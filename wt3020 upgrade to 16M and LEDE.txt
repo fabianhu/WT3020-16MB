@@ -1,0 +1,87 @@
+1. Unsolder the 8MB Flash chip
+
+2. Read flash chip using SW: ch341prog (HW CH341 based SPI programmer)
+	sudo ./ch341prog -r nexx2.bin
+
+3. Write flash chip to new W25Q128FVSSIG (16MB Flash)
+	sudo ./ch341prog -w nexx2.bin  (takes a while)
+
+4. Re-solder new flash chip
+
+5. Boot up with stock firmware on new chip
+
+6. install new Bootloader
+	
+	downloading directly to wt3020 will not work.
+	On PC ($) do:
+	$ wget --no-check-certificate https://breed.hackpascal.net/breed-mt7620-reset1.bin 
+	$ python -m SimpleHTTPServer 8000	
+	
+	now connect to your router (#):
+	$ telnet 192.168.8.1
+		login: nexxadmin
+		Password: y1n2inc.com0755
+	
+	transfer data to /tmp
+		# cd /tmp
+		# wget http://<your PC name or IP>:8000/breed-mt7620-reset1.bin
+		check if stuff arrived
+		# ls -l  
+
+	now we are ready to flash the bootloader - be careful - bricking here requires soldering and flash writer (again)
+		
+	# mtd_write unlock mtd0 
+	power falure before completing the next two steps: brick
+	# mtd_write erase mtd0 
+	# mtd_write -r write breed-mt7620-reset1.bin mtd0 
+	the last step takes a quite short amount of time, but freezes your telnet session. 
+	If you do this over serial console, you will see it rebooting shortly after issuing the flash command.
+	
+6.
+	building LEDE
+	choose a nice place for you build, will need a couple of GB
+	https://lede-project.org/docs/guide-developer/quickstart-build-images
+	
+	$ sudo apt-get install subversion g++ zlib1g-dev build-essential git python
+	$ sudo apt-get install libncurses5-dev gawk gettext unzip file libssl-dev wget
+
+	Get the LEDE source code:
+
+	$ git clone https://git.lede-project.org/source.git lede
+	$ cd lede
+
+	apply patch for the 16MB version
+		0001-WT3020-Add-support-for-16M-flash.patch
+		apply with
+		$ patch -p1 < file.patch
+		or three way
+		$ git am -3 < file.patch 
+
+	$ ./scripts/feeds update -a
+	$ ./scripts/feeds install -a
+
+	$ make defconfig
+	$ make menuconfig
+	
+	choose 
+	Target System (MediaTek Ralink MIPS)
+	Subtarget (MT7620 based boards)
+	Target Profile (Nexx WT3020 (16MB))
+
+	$ make	
+	takes close to forever (went away during buid, future builds will be faster)
+	
+7. Install new FW
+	login into web interface 192.168.8.1
+		admin - admin
+	go to: Advanced - System Settings - Upgrade firmware 
+	select:
+	<LEDE buid dir>/bin/targets/ramips/mt7620/lede-ramips-mt7620-wt3020-16M-squashfs-factory.bin
+	- Upgrade - say goodbuye to the nexx-firmware.
+	
+	- after reboot the wt3020 is accessible via 192.168.1.1.
+		
+8. Using breed
+	If you do not understand Chinese (the breed has a very nice (Chinese) web interface served on 192.168.1.1 if reboot got interrupted by serial console.)
+	Install Chrome / Chromium and a translation plugin:
+	https://github.com/szsoftware/breed-translator

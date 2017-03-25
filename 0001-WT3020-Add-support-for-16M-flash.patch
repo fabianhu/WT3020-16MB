@@ -1,0 +1,184 @@
+From dfc5b34fbd7d98d255441183a7e78b72e44c7e71 Mon Sep 17 00:00:00 2001
+From: fabianhu <fabianhu@users.noreply.github.com>
+Date: Mon, 13 Mar 2017 09:22:09 +0100
+Subject: [PATCH] WT3020: Add support for 16M flash
+
+---
+ target/linux/ramips/base-files/lib/ramips.sh |   3 +
+ target/linux/ramips/dts/WT3020-16M.dts       | 102 +++++++++++++++++++++++++++
+ target/linux/ramips/image/mt7620.mk          |   9 +++
+ tools/firmware-utils/src/mkporayfw.c         |   8 +++
+ 4 files changed, 122 insertions(+)
+ create mode 100644 target/linux/ramips/dts/WT3020-16M.dts
+
+diff --git a/target/linux/ramips/base-files/lib/ramips.sh b/target/linux/ramips/base-files/lib/ramips.sh
+index 6002362..207147a 100755
+--- a/target/linux/ramips/base-files/lib/ramips.sh
++++ b/target/linux/ramips/base-files/lib/ramips.sh
+@@ -622,6 +622,9 @@ ramips_board_detect() {
+ 	*"WT3020 (8M)")
+ 		name="wt3020-8M"
+ 		;;
++	*"WT3020 (16M)")
++		name="wt3020-16M"
++		;;
+ 	*"WZR-AGL300NH")
+ 		name="wzr-agl300nh"
+ 		;;
+diff --git a/target/linux/ramips/dts/WT3020-16M.dts b/target/linux/ramips/dts/WT3020-16M.dts
+new file mode 100644
+index 0000000..f7dfa26
+--- /dev/null
++++ b/target/linux/ramips/dts/WT3020-16M.dts
+@@ -0,0 +1,102 @@
++/dts-v1/;
++
++#include "mt7620n.dtsi"
++
++#include <dt-bindings/input/input.h>
++
++/ {
++	compatible = "wt3020", "ralink,mt7620n-soc";
++	model = "Nexx WT3020 (16M)";
++
++	gpio-keys-polled {
++		compatible = "gpio-keys-polled";
++		#address-cells = <1>;
++		#size-cells = <0>;
++		poll-interval = <20>;
++
++		reset {
++			label = "reset";
++			gpios = <&gpio0 1 1>;
++			linux,code = <KEY_RESTART>;
++		};
++	};
++
++	gpio-leds {
++		compatible = "gpio-leds";
++
++		power {
++			label = "wt3020:blue:power";
++			gpios = <&gpio3 0 0>;
++		};
++	};
++};
++
++&gpio2 {
++	status = "okay";
++};
++
++&gpio3 {
++	status = "okay";
++};
++
++&spi0 {
++	status = "okay";
++
++	m25p80@0 {
++		#address-cells = <1>;
++		#size-cells = <1>;
++		compatible = "jedec,spi-nor";
++		reg = <0>;
++		linux,modalias = "m25p80", "w25q64";
++		spi-max-frequency = <10000000>;
++
++		partition@0 {
++			label = "u-boot";
++			reg = <0x0 0x30000>;
++			read-only;
++		};
++
++		partition@30000 {
++			label = "u-boot-env";
++			reg = <0x30000 0x10000>;
++			read-only;
++		};
++
++		factory: partition@40000 {
++			label = "factory";
++			reg = <0x40000 0x10000>;
++			read-only;
++		};
++
++		partition@50000 {
++			label = "firmware";
++			reg = <0x50000 0xfb0000>;
++		};
++	};
++};
++
++&ehci {
++	status = "okay";
++};
++
++&ohci {
++	status = "okay";
++};
++
++&ethernet {
++	mtd-mac-address = <&factory 0x4>;
++	mediatek,portmap = "wllll";
++};
++
++&wmac {
++	ralink,mtd-eeprom = <&factory 0>;
++};
++
++&pinctrl {
++	state_default: pinctrl0 {
++		default {
++			ralink,group = "ephy", "wled", "pa", "i2c", "wdt", "uartf";
++			ralink,function = "gpio";
++		};
++	};
++};
+diff --git a/target/linux/ramips/image/mt7620.mk b/target/linux/ramips/image/mt7620.mk
+index 7122cfd..438a6a6 100644
+--- a/target/linux/ramips/image/mt7620.mk
++++ b/target/linux/ramips/image/mt7620.mk
+@@ -426,6 +426,15 @@ define Device/wt3020-8M
+ endef
+ TARGET_DEVICES += wt3020-8M
+ 
++define Device/wt3020-16M
++  DTS := WT3020-16M
++  IMAGES += factory.bin
++  IMAGE/factory.bin := $$(sysupgrade_bin) | check-size $$$$(IMAGE_SIZE) | \
++	poray-header -B WT3020 -F 16M
++  DEVICE_TITLE := Nexx WT3020 (16MB)
++endef
++TARGET_DEVICES += wt3020-16M
++
+ define Device/y1
+   DTS := Y1
+   IMAGE_SIZE := $(ralink_default_fw_size_16M)
+diff --git a/tools/firmware-utils/src/mkporayfw.c b/tools/firmware-utils/src/mkporayfw.c
+index 6ec4f32..6ef9afc 100644
+--- a/tools/firmware-utils/src/mkporayfw.c
++++ b/tools/firmware-utils/src/mkporayfw.c
+@@ -136,6 +136,9 @@ static struct flash_layout layouts[] = {
+ 		.id		= "8M",
+ 		.fw_max_len	= 0x7c0000,
+ 	}, {
++		.id		= "16M",
++		.fw_max_len	= 0xfc0000,		
++	}, {
+ 		/* terminating entry */
+ 	}
+ };
+@@ -230,6 +233,11 @@ static struct board_info boards[] = {
+                 .id             = "WT3020",
+                 .hw_id          = HWID_NEXX_WT3020,
+                 .layout_id      = "8M",
++                .key            = KEY_NEXX_2, 
++        }, {
++                .id             = "WT3020",
++                .hw_id          = HWID_NEXX_WT3020,
++                .layout_id      = "16M",
+                 .key            = KEY_NEXX_2,
+         }, {
+ 
+-- 
+2.7.4
+
