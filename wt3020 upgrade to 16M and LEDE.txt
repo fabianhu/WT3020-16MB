@@ -1,6 +1,7 @@
 Prerequisites: 
 	* Linux PC (tested with Ubuntu 16.04)
 	* soldering iron
+	* W25Q128FVSSIG (16MB Flash Chip)
 	* CH341 based SPI to USB flash programmer
 	* some thin wire or a SO-8 adapter
 	* one nexx WT3020 router
