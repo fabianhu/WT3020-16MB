@@ -10,14 +10,17 @@
 
 5. Boot up with stock firmware on new chip
 
-6. install new Bootloader
+6. Install new Bootloader
 	
 	downloading directly to wt3020 will not work.
 	On PC ($) do:
 	$ wget --no-check-certificate https://breed.hackpascal.net/breed-mt7620-reset1.bin 
 	$ python -m SimpleHTTPServer 8000	
-	
-	now connect to your router (#):
+
+	The file is also provided in this repository for your convenience
+	Thanks to hackpascal for providing this on his website.
+
+	Now connect to your router (#):
 	$ telnet 192.168.8.1
 		login: nexxadmin
 		Password: y1n2inc.com0755
@@ -31,16 +34,18 @@
 	now we are ready to flash the bootloader - be careful - bricking here requires soldering and flash writer (again)
 		
 	# mtd_write unlock mtd0 
-	power falure before completing the next two steps: brick
+	power falure before completing the next two steps: brick - soldering - repeat
 	# mtd_write erase mtd0 
 	# mtd_write -r write breed-mt7620-reset1.bin mtd0 
-	the last step takes a quite short amount of time, but freezes your telnet session. 
-	If you do this over serial console, you will see it rebooting shortly after issuing the flash command.
+	the last step takes a quite short amount of time, but freezes your telnet session which makes it seem to take forever. 
+	If you do this over serial console, you will see it rebooting shortly after issuing the write command.
 	
-6.
-	building LEDE
-	choose a nice place for you build, will need a couple of GB
+6. Building LEDE
+	Choose a nice place for you build directory, will need ~14 GB - this is a full Linux build.
+	See instructions here:
 	https://lede-project.org/docs/guide-developer/quickstart-build-images
+	
+	Short instructions:
 	
 	$ sudo apt-get install subversion g++ zlib1g-dev build-essential git python
 	$ sudo apt-get install libncurses5-dev gawk gettext unzip file libssl-dev wget
@@ -50,9 +55,7 @@
 	$ git clone https://git.lede-project.org/source.git lede
 	$ cd lede
 
-	apply patch for the 16MB version
-		0001-WT3020-Add-support-for-16M-flash.patch
-		apply with
+	apply patch for the 16MB version (0001-WT3020-Add-support-for-16M-flash.patch)
 		$ patch -p1 < file.patch
 		or three way
 		$ git am -3 < file.patch 
@@ -69,19 +72,20 @@
 	Target Profile (Nexx WT3020 (16MB))
 
 	$ make	
-	takes close to forever (went away during buid, future builds will be faster)
+	takes aeons to build. (went away during buid, future builds will much faster)
 	
-7. Install new FW
+7. Install new FW to router
 	login into web interface 192.168.8.1
 		admin - admin
 	go to: Advanced - System Settings - Upgrade firmware 
 	select:
 	<LEDE buid dir>/bin/targets/ramips/mt7620/lede-ramips-mt7620-wt3020-16M-squashfs-factory.bin
-	- Upgrade - say goodbuye to the nexx-firmware.
+	- say goodbuye to the nexx-firmware.
+	- Upgrade 
 	
-	- after reboot the wt3020 is accessible via 192.168.1.1.
+	- after reboot the wt3020 is accessible via 192.168.1.1 .
 		
 8. Using breed
-	If you do not understand Chinese (the breed has a very nice (Chinese) web interface served on 192.168.1.1 if reboot got interrupted by serial console.)
+	If you do not understand Chinese (the breed has a very nice (Chinese) web interface served on 192.168.1.1 if reboot got interrupted by serial console. or things went wrong)
 	Install Chrome / Chromium and a translation plugin:
 	https://github.com/szsoftware/breed-translator
