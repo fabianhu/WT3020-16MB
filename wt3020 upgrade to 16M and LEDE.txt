@@ -1,47 +1,63 @@
-1. Unsolder the 8MB Flash chip
+Prerequisites: 
+	* Linux PC (tested with Ubuntu 16.04)
+	* soldering iron
+	* CH341 based SPI to USB flash programmer
+	* some thin wire or a SO-8 adapter
+	* one nexx WT3020 router
 
-2. Read flash chip using SW: ch341prog (HW CH341 based SPI programmer)
-	sudo ./ch341prog -r nexx2.bin
+1. Unsolder the 8MB Flash chip (SO-8)
+
+2. Read flash chip with ch341prog (https://github.com/danielkucera/ch341prog)
+	$ sudo ./ch341prog -r nexx.bin
 
 3. Write flash chip to new W25Q128FVSSIG (16MB Flash)
-	sudo ./ch341prog -w nexx2.bin  (takes a while)
+	$ sudo ./ch341prog -w nexx.bin  
+	(takes quite a while and will automatically verify)
 
-4. Re-solder new flash chip
+4. Re-solder the new flash chip to the router
+	maybe on top of pre-soldered pads to ease later unsoldering in case things go wrong
 
-5. Boot up with stock firmware on new chip
+5. Boot up router with stock firmware on new chip
 
 6. Install new Bootloader
 	
-	downloading directly to wt3020 will not work.
-	On PC ($) do:
+	Downloading .bin directly to wt3020 will not work, therefore we download it on PC and http-transfer it to the router.
+	
+	On PC ($)
+	get the breed bootloader:
 	$ wget --no-check-certificate https://breed.hackpascal.net/breed-mt7620-reset1.bin 
+	serve actual directory over http:
 	$ python -m SimpleHTTPServer 8000	
 
 	The file is also provided in this repository for your convenience
 	Thanks to hackpascal for providing this on his website.
 
-	Now connect to your router (#):
+	Now connect to your router:
 	$ telnet 192.168.8.1
 		login: nexxadmin
 		Password: y1n2inc.com0755
+		this is the backdoor built into the original firmware
 	
-	transfer data to /tmp
+	transfer data to /tmp on the router:
 		# cd /tmp
 		# wget http://<your PC name or IP>:8000/breed-mt7620-reset1.bin
 		check if stuff arrived
 		# ls -l  
 
-	now we are ready to flash the bootloader - be careful - bricking here requires soldering and flash writer (again)
+	now we are ready to flash the bootloader:
 		
 	# mtd_write unlock mtd0 
+	
 	power falure before completing the next two steps: brick - soldering - repeat
+	
 	# mtd_write erase mtd0 
 	# mtd_write -r write breed-mt7620-reset1.bin mtd0 
-	the last step takes a quite short amount of time, but freezes your telnet session which makes it seem to take forever. 
+	
+	The last step takes a quite short amount of time, but freezes your telnet session which makes it seem to take forever. 
 	If you do this over serial console, you will see it rebooting shortly after issuing the write command.
 	
 6. Building LEDE
-	Choose a nice place for you build directory, will need ~14 GB - this is a full Linux build.
+	Choose a nice place for you build directory, needs ~14 GB - this is a full Linux build.
 	See instructions here:
 	https://lede-project.org/docs/guide-developer/quickstart-build-images
 	
@@ -55,7 +71,7 @@
 	$ git clone https://git.lede-project.org/source.git lede
 	$ cd lede
 
-	apply patch for the 16MB version (0001-WT3020-Add-support-for-16M-flash.patch)
+	apply patch for the 16MB version (0001-WT3020-Add-support-for-16M-flash.patch) from this repo
 		$ patch -p1 < file.patch
 		or three way
 		$ git am -3 < file.patch 
@@ -83,9 +99,11 @@
 	- say goodbuye to the nexx-firmware.
 	- Upgrade 
 	
-	- after reboot the wt3020 is accessible via 192.168.1.1 .
+	- after reboot the wt3020 is accessible via 192.168.1.1 
+	- maybe you have to change you ip manually or reboot
 		
 8. Using breed
 	If you do not understand Chinese (the breed has a very nice (Chinese) web interface served on 192.168.1.1 if reboot got interrupted by serial console. or things went wrong)
 	Install Chrome / Chromium and a translation plugin:
 	https://github.com/szsoftware/breed-translator
+	Still hoping for hackpascal to release the source ;)
